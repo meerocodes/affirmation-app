@@ -13,7 +13,16 @@ html,
 }
 
 .App {
-  background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%);
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg,
+      #a1c4fd 0%,
+      /* sky blue */
+      #ff9a9e 50%,
+      /* pink */
+      #fad0c4 100%
+      /* peach */
+    );
   min-height: 100%;
   display: flex;
   flex-direction: column;
@@ -21,6 +30,31 @@ html,
   padding: 2rem;
   color: #333;
   text-align: center;
+}
+
+/* floating uplifting icons */
+.App::before {
+  content: '☁️ ☀️ ✨ 🌈 💖';
+  position: absolute;
+  top: -10%;
+  left: 0;
+  width: 200%;
+  font-size: 3rem;
+  display: flex;
+  justify-content: space-around;
+  animation: moveIcons 20s linear infinite;
+  pointer-events: none;
+  opacity: 0.3;
+}
+
+@keyframes moveIcons {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
 }
 
 /* header */
@@ -135,18 +169,6 @@ header h1 {
   }
 }
 
-/* set-goal & finished screens */
-.App.set-goal input,
-.App.set-goal button {
-  margin: 1rem;
-}
-
-.App.finished h1,
-.App.finished p {
-  color: #fff;
-  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
-}
-
 /* ======= Set‑Goal Screen Inputs & Button ======= */
 .App.set-goal {
   display: flex;
@@ -161,7 +183,6 @@ header h1 {
   color: #fff;
 }
 
-/* Goal number selector */
 .goal-input {
   width: 120px;
   padding: 0.75rem 1rem;
@@ -172,7 +193,7 @@ header h1 {
   background: rgba(255, 255, 255, 0.9);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   margin-bottom: 1rem;
-  transition: transform 0.1s ease;
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
 }
 
 .goal-input:focus {
@@ -181,7 +202,6 @@ header h1 {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* Start Affirmations button */
 .start-btn {
   background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
   color: #333;
@@ -202,4 +222,11 @@ header h1 {
 .start-btn:active {
   transform: translateY(0);
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* finished screen */
+.App.finished h1,
+.App.finished p {
+  color: #fff;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
 }

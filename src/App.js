@@ -10,7 +10,27 @@ const affirmations = [
   'I believe in myself',
   'I am capable of amazing things',
   'I embrace challenges with courage',
-  'I radiate positivity and joy'
+  'I radiate positivity and joy',
+  'I am confident in my abilities',
+  'I deserve happiness and success',
+  'I trust the journey of my life',
+  'I am grateful for this moment',
+  'I choose peace and calm',
+  'I am creative and resourceful',
+  'I attract abundance effortlessly',
+  'I am surrounded by love',
+  'I am healthy and vital',
+  'I forgive myself and grow',
+  'I embrace my uniqueness',
+  'I am evolving every day',
+  'I deserve self-care and rest',
+  'I am resilient and persistent',
+  'I trust my intuition and wisdom',
+  'I spread kindness wherever I go',
+  'I am worthy of my dreams',
+  'I release fear and embrace love',
+  'I am proud of who I am',
+  'I welcome new opportunities'
 ];
 
 function App() {
@@ -28,7 +48,6 @@ function App() {
     browserSupportsSpeechRecognition
   } = useSpeechRecognition();
 
-  // check match
   useEffect(() => {
     if (!transcript || stage !== 'affirming') return;
     const said = transcript.trim().toLowerCase();
@@ -37,20 +56,19 @@ function App() {
     if (said === target) {
       setStatus('correct');
       SpeechRecognition.stopListening();
+      resetTranscript();  // clear so "try-again" won't flash
 
-      // play video (silent autoplay, just for the animation)
+      // play video animation
       const vid = document.createElement('video');
       vid.src = successVideo;
-      vid.play().catch(() => { }); // ignore autoplay block
+      vid.play().catch(() => { });
 
-      // show checkmark animation
+      // show checkmark
       setShowCheck(true);
 
       setTimeout(() => {
         setPoints(p => p + 10);
         setShowCheck(false);
-        resetTranscript();
-
         if (points + 10 >= goal) {
           setStage('finished');
         } else if (index < affirmations.length - 1) {
@@ -61,6 +79,7 @@ function App() {
           setStatus('idle');
         }
       }, 1000);
+
     } else {
       setStatus('try-again');
     }
@@ -73,32 +92,24 @@ function App() {
   };
 
   if (!browserSupportsSpeechRecognition) {
-    return (
-      <div className="App">
-        <p>Speech recognition not supported.</p>
-      </div>
-    );
+    return <div className="App"><p>Speech recognition not supported.</p></div>;
   }
 
   if (stage === 'set-goal') {
     return (
       <div className="App set-goal">
         <h1>Set Your Point Goal</h1>
-<input
+        <input
           className="goal-input"
-        type="number"
-        min="10"
-        step="10"
-        value={goal}
-        onChange={e => setGoal(Number(e.target.value))}
-         />
-        
-        <button
-         className="start-btn"
-                 onClick={() => setStage('affirming')}
-       >
-                  ✨ Start Affirmations
-                </button>
+          type="number"
+          min="10"
+          step="10"
+          value={goal}
+          onChange={e => setGoal(Number(e.target.value))}
+        />
+        <button className="start-btn" onClick={() => setStage('affirming')}>
+          ✨ Start Affirmations
+        </button>
       </div>
     );
   }
@@ -112,7 +123,6 @@ function App() {
     );
   }
 
-  // affirming stage
   const current = affirmations[index];
   return (
     <div className="App">
@@ -137,11 +147,8 @@ function App() {
           <p className="feedback wrong">Try again!</p>
         )}
 
-        {/* checkmark animation */}
         {showCheck && (
-          <div className="checkmark-box">
-            ✔️
-          </div>
+          <div className="checkmark-box">✔️</div>
         )}
       </div>
     </div>
