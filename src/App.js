@@ -1,7 +1,6 @@
+// src/App.js
 import React, { useState, useEffect } from 'react';
-import SpeechRecognition, {
-  useSpeechRecognition
-} from 'react-speech-recognition';
+import { createModel } from 'vosk-browser';
 import successVideo from './assets/cheerfulDing.mov';
 import './App.css';
 
@@ -34,65 +33,97 @@ const affirmations = [
 ];
 
 function App() {
-  const [stage, setStage] = useState('set-goal');
+  const getRandomIndex = () =>
+    Math.floor(Math.random() * affirmations.length);
+
+  // State
+  const [modelReady, setModelReady] = useState(false);
+  const [recognizer, setRecognizer] = useState(null);
+  const [finalText, setFinalText] = useState('');
+  const [status, setStatus] = useState('idle');       // 'idle' | 'listening' | 'try-again' | 'correct'
+  const [stage, setStage] = useState('set-goal');   // 'set-goal' | 'affirming' | 'finished'
   const [goal, setGoal] = useState(50);
   const [points, setPoints] = useState(0);
-  const [index, setIndex] = useState(0);
-  const [status, setStatus] = useState('idle');
+  const [index, setIndex] = useState(getRandomIndex);
   const [showCheck, setShowCheck] = useState(false);
 
-  const {
-    transcript,
-    listening,
-    resetTranscript,
-    browserSupportsSpeechRecognition
-  } = useSpeechRecognition();
-
+  // 1. Load Vosk model
   useEffect(() => {
-    if (!transcript || stage !== 'affirming') return;
-    const said = transcript.trim().toLowerCase();
+    (async () => {
+      const model = await createModel('/model/vosk-model-small-en-us-0.15.tar.gz');
+      model.setLogLevel(0);
+      const rec = new model.KaldiRecognizer();
+      rec.setWords(false);
+      rec.on('result', msg => setFinalText(msg.result.text));
+      rec.on('partialresult', msg => {/*optional*/ });
+      setRecognizer(rec);
+      setModelReady(true);
+    })();
+  }, []);
+
+  // 2. Hook mic & always stream into recognizer
+  useEffect(() => {
+    if (!recognizer) return;
+    (async () => {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 }
+      });
+      const ctx = new AudioContext();
+      const node = ctx.createScriptProcessor(4096, 1, 1);
+      node.onaudioprocess = e => {
+        try { recognizer.acceptWaveform(e.inputBuffer) }
+        catch { }
+      };
+      const src = ctx.createMediaStreamSource(stream);
+      src.connect(node);
+      node.connect(ctx.destination);
+    })();
+  }, [recognizer]);
+
+  // 3. On finalText change, check affirmation
+  useEffect(() => {
+    if (stage !== 'affirming' || status !== 'listening' || !finalText) return;
+
+    const said = finalText.trim().toLowerCase();
     const target = affirmations[index].toLowerCase();
 
     if (said === target) {
       setStatus('correct');
-      SpeechRecognition.stopListening();
-      resetTranscript();  // clear so "try-again" won't flash
-
-      // play video animation
+      // play animation
       const vid = document.createElement('video');
       vid.src = successVideo;
       vid.play().catch(() => { });
-
-      // show checkmark
       setShowCheck(true);
-
       setTimeout(() => {
         setPoints(p => p + 10);
         setShowCheck(false);
-        if (points + 10 >= goal) {
-          setStage('finished');
-        } else if (index < affirmations.length - 1) {
-          setIndex(i => i + 1);
-          setStatus('idle');
-        } else {
-          setIndex(0);
+        if (points + 10 >= goal) setStage('finished');
+        else {
+          setIndex(getRandomIndex());
           setStatus('idle');
         }
       }, 1000);
-
     } else {
       setStatus('try-again');
     }
-  }, [transcript, index, stage, goal, points, resetTranscript]);
+  }, [finalText, index, stage, status, goal, points]);
 
+  // start listening handler
   const startListening = () => {
-    setStatus('listening');
-    resetTranscript();
-    SpeechRecognition.startListening({ continuous: false, language: 'en-US' });
+    setFinalText('');       // wipe out previous result
+    setStatus('listening'); // only evaluate while listening
   };
 
-  if (!browserSupportsSpeechRecognition) {
-    return <div className="App"><p>Speech recognition not supported.</p></div>;
+  // start affirmations
+  const startAffirmations = () => {
+    setIndex(getRandomIndex());
+    setPoints(0);
+    setStatus('idle');
+    setStage('affirming');
+  };
+
+  if (!modelReady) {
+    return <div className="App"><p>⏳ Loading speech model…</p></div>;
   }
 
   if (stage === 'set-goal') {
@@ -101,13 +132,11 @@ function App() {
         <h1>Set Your Point Goal</h1>
         <input
           className="goal-input"
-          type="number"
-          min="10"
-          step="10"
+          type="number" min="10" step="10"
           value={goal}
           onChange={e => setGoal(Number(e.target.value))}
         />
-        <button className="start-btn" onClick={() => setStage('affirming')}>
+        <button className="start-btn" onClick={startAffirmations}>
           ✨ Start Affirmations
         </button>
       </div>
@@ -119,10 +148,14 @@ function App() {
       <div className="App finished">
         <h1>🎉 Congratulations! 🎉</h1>
         <p>You reached {points} points.</p>
+        <button className="start-btn" onClick={() => setStage('set-goal')}>
+          🔄 Play Again
+        </button>
       </div>
     );
   }
 
+  // Affirming screen with Speak button
   const current = affirmations[index];
   return (
     <div className="App">
@@ -135,12 +168,13 @@ function App() {
 
       <div className="card">
         <p className="affirmation">“{current}”</p>
+
         <button
           className="speak-btn"
           onClick={startListening}
-          disabled={listening}
+          disabled={status === 'listening'}
         >
-          {listening ? 'Listening…' : 'Speak Now'}
+          {status === 'listening' ? 'Listening…' : 'Speak Now'}
         </button>
 
         {status === 'try-again' && (
